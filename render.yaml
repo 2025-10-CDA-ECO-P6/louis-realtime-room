@@ -4,6 +4,7 @@ services:
     name: louis-realtime-room-web
     env: docker
     dockerfilePath: web/Dockerfile
+    dockerContext: ./web
     plan: free
 
 
@@ -11,4 +12,5 @@ services:
     name: louis-realtime-room-api
     env: docker
     dockerfilePath: api/Dockerfile
+    dockerContext: ./api
     plan: free
