@@ -1,0 +1,13 @@
+{
+  "name": "louis-realtime-room-monorepo",
+  "private": true,
+  "scripts": {
+    "dev": "pnpm --filter api... dev & pnpm --filter web... dev",
+    "lint": "pnpm --filter ./api lint && pnpm --filter ./web lint",
+    "build": "pnpm --filter ./api build && pnpm --filter ./web build"
+  },
+  "workspaces": [
+    "api",
+    "web"
+  ]
+}
