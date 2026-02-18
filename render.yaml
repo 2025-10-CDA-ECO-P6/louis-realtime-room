@@ -1,0 +1,14 @@
+
+services:
+  - type: web
+    name: louis-realtime-room-web
+    env: docker
+    dockerfilePath: web/Dockerfile
+    plan: free
+
+
+  - type: web
+    name: louis-realtime-room-api
+    env: docker
+    dockerfilePath: api/Dockerfile
+    plan: free
