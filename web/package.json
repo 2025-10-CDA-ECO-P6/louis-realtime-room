@@ -7,7 +7,9 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "sass": "sass src/styles/main.scss src/styles/index.css",
+    "sass:watch": "sass src/styles/main.scss src/styles/index.css --watch"
   },
   "dependencies": {
     "nginx": "^1.1.0",
