@@ -2,15 +2,14 @@
 services:
   - type: web
     name: louis-realtime-room-web
-    env: docker
+    runtime: docker
     dockerfilePath: web/Dockerfile
     dockerContext: ./web
     plan: free
 
-
   - type: web
     name: louis-realtime-room-api
-    env: docker
+    runtime: docker
     dockerfilePath: api/Dockerfile
     dockerContext: ./api
     plan: free

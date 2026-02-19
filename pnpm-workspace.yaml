@@ -1,5 +1,5 @@
 nodeVersion: 22.0.0
 
 packages:
-  - 'api/package.json'
-  - 'web/package.json'
+- 'api/'
+- 'web/'
