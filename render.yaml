@@ -20,5 +20,5 @@ services:
       - key: API_INTERNAL_URL
         fromService:
           type: web
-          name: louis-realtime-room-api
+          name: https://louis-realtime-room-api.onrender.com
           property: host
