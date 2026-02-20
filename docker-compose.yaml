@@ -18,3 +18,5 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+    environment:
+      - API_INTERNAL_URL=http://api:3001

@@ -19,5 +19,8 @@ services:
     dockerContext: ./web
     plan: free
     envVars:
-      - key: VITE_API_URL
-        sync: false
+      - key: API_INTERNAL_URL
+        fromService:
+          type: web
+          name: louis-realtime-room-api
+          property: host

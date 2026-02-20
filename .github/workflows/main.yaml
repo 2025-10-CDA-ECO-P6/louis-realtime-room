@@ -26,9 +26,45 @@ jobs:
       
       - name: Check API
         run: timeout 15s pnpm --filter backend run start || [ $? -eq 124 ]
-  deploy:
+
+  docker-build-and-push:
     runs-on: ubuntu-latest
     needs: build-and-test
+    if: success()
+
+    steps:
+    - uses: actions/checkout@v3
+
+
+    - name: Log in to Docker Hub
+      uses: docker/login-action@v2
+      with:
+        username: ${{ secrets.DOCKERHUB_USERNAME }}
+        password: ${{ secrets.DOCKERHUB_ACCESS_TOKEN }}
+
+    - name: Build and push API Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./api
+        file: ./api/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/realroomapi:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/realroomapi:${{ github.sha }}
+
+    - name: Build and push WEB Docker image
+      uses: docker/build-push-action@v4
+      with:
+        context: ./web
+        file: ./web/Dockerfile
+        push: true
+        tags: |
+          ${{ secrets.DOCKERHUB_USERNAME }}/realroomweb:latest
+          ${{ secrets.DOCKERHUB_USERNAME }}/realroomweb:${{ github.sha }}
+
+  deploy:
+    runs-on: ubuntu-latest
+    needs: docker-build-and-push
     if: success()
   
     steps:
