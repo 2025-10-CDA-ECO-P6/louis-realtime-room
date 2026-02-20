@@ -31,6 +31,23 @@
   margin-top: 0.5rem;
 }
 
+.sidebar-users h3 {
+  font-size: 0.85rem;
+  font-weight: 600;
+  margin: 0 0 0.5rem 0;
+  opacity: 0.8;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-users span {
+  display: block;
+  padding: 0.4rem 0.5rem;
+  margin-bottom: 0.25rem;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0.5rem;
+}
+
 .chat-main {
   flex: 1;
   display: flex;
@@ -70,7 +87,7 @@
   font-size: 0.95rem;
   padding: 0.5rem 0.75rem;
   border-radius: 0.75rem;
-  background: #e9ecef;
+  background: #506479;
   align-self: flex-start;
   max-width: 85%;
   word-break: break-word;
@@ -80,6 +97,16 @@
   background: #c9ada7;
   color: #22223b;
   align-self: flex-end;
+}
+
+.chat-message.system {
+  background: #f0f0f0;
+  color: #666;
+  align-self: center;
+  font-style: italic;
+  font-size: 0.85rem;
+  max-width: 90%;
+  text-align: center;
 }
 
 .chat-user {

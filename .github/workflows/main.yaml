@@ -3,12 +3,35 @@ name: CI-Web
 on:
   push:
     branches: [ main ]
-  pull_request:
-    branches: [ main ]
 
 jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+  
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+       
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      
+      - name: Install dependencies
+        run: pnpm install
+      
+      - name: Lint web
+        run: pnpm --filter frontend run lint
+      
+      - name: Build web
+        run: pnpm --filter frontend run build
+      
+      - name: Check API
+        run: pnpm --filter backend run start
   deploy:
     runs-on: ubuntu-latest
+    needs: build-and-test
+    if: success()
   
     steps:
       - name: Deploying on render 
