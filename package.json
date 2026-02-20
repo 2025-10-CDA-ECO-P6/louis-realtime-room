@@ -4,11 +4,17 @@
   "scripts": {
     "dev": "pnpm --filter api... dev & pnpm --filter web... dev",
     "lint": "pnpm --filter ./api lint && pnpm --filter ./web lint",
-    "build": "pnpm --filter ./api build && pnpm --filter ./web build"
+    "build": "pnpm --filter ./api build && pnpm --filter ./web build",
+    "dev:api": "dotenv -e .env -- pnpm --filter api dev",
+    "dev:web": "dotenv -e .env -- pnpm --filter web dev",
+    "start:api": "dotenv -e .env -- pnpm --filter api start"
   },
   "workspaces": [
     "api",
     "web"
   ],
-  "packageManager": "pnpm@10.30.0+sha512.2b5753de015d480eeb88f5b5b61e0051f05b4301808a82ec8b840c9d2adf7748eb352c83f5c1593ca703ff1017295bc3fdd3119abb9686efc96b9fcb18200937"
+  "packageManager": "pnpm@10.30.0+sha512.2b5753de015d480eeb88f5b5b61e0051f05b4301808a82ec8b840c9d2adf7748eb352c83f5c1593ca703ff1017295bc3fdd3119abb9686efc96b9fcb18200937",
+  "devDependencies": {
+    "dotenv-cli": "^7.4.2"
+  }
 }
