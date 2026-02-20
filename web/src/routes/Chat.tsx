@@ -30,7 +30,7 @@ const Chat: React.FC = () => {
     }
 
   
-    const socket = io(import.meta.env.API_URL || 'http://localhost:3001');
+    const socket = io('/', { path: '/socket.io' });
     socketRef.current = socket;
 
 
