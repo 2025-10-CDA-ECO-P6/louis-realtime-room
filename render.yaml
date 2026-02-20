@@ -2,21 +2,19 @@
 services:
   - type: web
     name: louis-realtime-room-api
-    runtime: docker
-    dockerfilePath: api/Dockerfile
-    dockerContext: ./api
+    runtime: image
+    image:
+      url: docker.io/coljurten/realroomapi:latest
     plan: free
     envVars:
       - key: PORT
         value: 3001
-      - key: WEB_URL
-        sync: false
 
   - type: web
     name: louis-realtime-room-web
-    runtime: docker
-    dockerfilePath: web/Dockerfile
-    dockerContext: ./web
+    runtime: image
+    image:
+      url: docker.io/coljurten/realroomweb:latest
     plan: free
     envVars:
       - key: API_INTERNAL_URL
