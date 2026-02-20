@@ -1,9 +1,15 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../styles/chat.scss';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { io, Socket } from 'socket.io-client';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
+}
+
+interface Message {
+  user: string;
+  text: string;
 }
 
 const Chat: React.FC = () => {
@@ -12,13 +18,38 @@ const Chat: React.FC = () => {
   const username = query.get('username') || '';
   const room = query.get('room') || '';
   const [message, setMessage] = useState('');
-  const [messages, setMessages] = useState<Array<{user: string, text: string}>>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [roomUsers, setRoomUsers] = useState<string[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (!username || !room) {
       navigate('/');
+      return;
     }
+
+  
+    const socket = io(import.meta.env.VITE_API_URL || 'http://localhost:3001');
+    socketRef.current = socket;
+
+
+    socket.emit('join', { username, room });
+
+
+    socket.on('message', (msg: Message) => {
+      setMessages(prev => [...prev, msg]);
+    });
+
+
+    socket.on('roomUsers', (users: string[]) => {
+      setRoomUsers(users);
+    });
+
+
+    return () => {
+      socket.disconnect();
+    };
   }, [username, room, navigate]);
 
   useEffect(() => {
@@ -27,8 +58,8 @@ const Chat: React.FC = () => {
 
   const handleSend = (e: React.FormEvent) => {
     e.preventDefault();
-    if (message.trim()) {
-      setMessages([...messages, { user: username, text: message }]);
+    if (message.trim() && socketRef.current) {
+      socketRef.current.emit('sendMessage', message);
       setMessage('');
     }
   };
@@ -40,7 +71,12 @@ const Chat: React.FC = () => {
           <h2>Room: {room}</h2>
         </div>
         <div className="sidebar-users">
-          <span>{username} (You)</span>
+          <h3>Users ({roomUsers.length})</h3>
+          {roomUsers.map((user, idx) => (
+            <span key={idx}>
+              {user} {user === username && '(You)'}
+            </span>
+          ))}
         </div>
       </aside>
       <main className="chat-main">
@@ -49,7 +85,7 @@ const Chat: React.FC = () => {
         </div>
         <div className="chat-messages">
           {messages.map((msg, idx) => (
-            <div key={idx} className={`chat-message${msg.user === username ? ' own' : ''}`}>
+            <div key={idx} className={`chat-message${msg.user === username ? ' own' : msg.user === 'System' ? ' system' : ''}`}>
               <span className="chat-user">{msg.user}:</span> <span>{msg.text}</span>
             </div>
           ))}
