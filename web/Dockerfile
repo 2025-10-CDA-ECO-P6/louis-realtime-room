@@ -36,6 +36,11 @@ EXPOSE 80
 
 # Create entrypoint script to substitute env vars and start nginx
 RUN echo '#!/bin/sh' > /docker-entrypoint-custom.sh && \
+    echo '# If API_INTERNAL_URL does not start with http, prepend https://' >> /docker-entrypoint-custom.sh && \
+    echo 'if ! echo "$API_INTERNAL_URL" | grep -q "^http"; then' >> /docker-entrypoint-custom.sh && \
+    echo '  API_INTERNAL_URL="https://$API_INTERNAL_URL"' >> /docker-entrypoint-custom.sh && \
+    echo 'fi' >> /docker-entrypoint-custom.sh && \
+    echo 'export API_INTERNAL_URL' >> /docker-entrypoint-custom.sh && \
     echo 'envsubst "\$API_INTERNAL_URL" < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf' >> /docker-entrypoint-custom.sh && \
     echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint-custom.sh && \
     chmod +x /docker-entrypoint-custom.sh
