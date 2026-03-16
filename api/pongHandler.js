@@ -12,6 +12,7 @@ class PongGameManager {
   constructor() {
     this.games = {};
     this.countdownTimers = {};
+    this.playerDirections = {};
   }
 
   joinGame(room, username) {
@@ -104,9 +105,35 @@ class PongGameManager {
     }
   }
 
+  setPlayerDirection(room, username, direction) {
+    if (!this.playerDirections[room]) {
+      this.playerDirections[room] = {};
+    }
+    this.playerDirections[room][username] = direction;
+  }
+
+  clearPlayerDirection(room, username, direction) {
+    if (!this.playerDirections[room]) return;
+    // Only clear if it matches the current direction (avoid clearing 'up' when 'down' stop comes)
+    if (this.playerDirections[room][username] === direction) {
+      this.playerDirections[room][username] = null;
+    }
+  }
+
   tick(room) {
     const state = this.games[room];
     if (!state || state.status !== 'playing') return state;
+
+    // Apply continuous paddle movement from held keys
+    const dirs = this.playerDirections[room];
+    if (dirs) {
+      if (dirs[state.player1]) {
+        movePaddle(state, 1, dirs[state.player1]);
+      }
+      if (dirs[state.player2]) {
+        movePaddle(state, 2, dirs[state.player2]);
+      }
+    }
 
     updateBall(state);
     const scoreResult = checkCollisions(state);
@@ -137,6 +164,7 @@ class PongGameManager {
       clearInterval(this.countdownTimers[room]);
       delete this.countdownTimers[room];
     }
+    delete this.playerDirections[room];
     delete this.games[room];
   }
 }

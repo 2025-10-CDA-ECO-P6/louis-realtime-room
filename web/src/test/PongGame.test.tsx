@@ -192,7 +192,7 @@ describe('PongGame Component', () => {
     expect(mockSocket.on).toHaveBeenCalledWith('pong:state', expect.any(Function));
   });
 
-  it('should emit pong:move on arrow key press when player', () => {
+  it('should emit pong:startMove on arrow key press when player', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
     act(() => {
       mockSocket._trigger('pong:state', {
@@ -209,6 +209,53 @@ describe('PongGame Component', () => {
       });
     });
     fireEvent.keyDown(screen.getByTestId('pong-container'), { key: 'ArrowUp' });
-    expect(mockSocket.emit).toHaveBeenCalledWith('pong:move', { room: 'test', direction: 'up' });
+    expect(mockSocket.emit).toHaveBeenCalledWith('pong:startMove', { room: 'test', direction: 'up' });
+  });
+
+  it('should emit pong:stopMove on arrow key release when player', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:state', {
+        ball: { x: 400, y: 200, dx: 4, dy: 4 },
+        paddle1: { x: 10, y: 160 },
+        paddle2: { x: 780, y: 160 },
+        score1: 0,
+        score2: 0,
+        status: 'playing',
+        countdown: null,
+        player1: 'alice',
+        player2: 'bob',
+        winner: null,
+      });
+    });
+    const container = screen.getByTestId('pong-container');
+    fireEvent.keyDown(container, { key: 'ArrowDown' });
+    fireEvent.keyUp(container, { key: 'ArrowDown' });
+    expect(mockSocket.emit).toHaveBeenCalledWith('pong:stopMove', { room: 'test', direction: 'down' });
+  });
+
+  it('should not emit duplicate pong:startMove for held key', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:state', {
+        ball: { x: 400, y: 200, dx: 4, dy: 4 },
+        paddle1: { x: 10, y: 160 },
+        paddle2: { x: 780, y: 160 },
+        score1: 0,
+        score2: 0,
+        status: 'playing',
+        countdown: null,
+        player1: 'alice',
+        player2: 'bob',
+        winner: null,
+      });
+    });
+    const container = screen.getByTestId('pong-container');
+    fireEvent.keyDown(container, { key: 'ArrowUp' });
+    fireEvent.keyDown(container, { key: 'ArrowUp' });
+    const startMoveCalls = (mockSocket.emit as ReturnType<typeof vi.fn>).mock.calls.filter(
+      (c: unknown[]) => c[0] === 'pong:startMove'
+    );
+    expect(startMoveCalls).toHaveLength(1);
   });
 });

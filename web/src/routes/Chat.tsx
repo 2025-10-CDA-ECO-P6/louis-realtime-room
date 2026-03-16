@@ -85,18 +85,22 @@ const Chat: React.FC = () => {
         <div className="chat-header">
           <h1>Realtime Room</h1>
         </div>
-        {socketRef.current && (
-          <PongGame socket={socketRef.current} username={username} room={room} />
-        )}
-        <div className="chat-messages">
+        <div className="chat-content">
+          <div className="chat-content-game">
+            {socketRef.current && (
+              <PongGame socket={socketRef.current} username={username} room={room} />
+            )}
+          </div>
+          <div className="chat-content-messages">
+            <div className="chat-messages">
           {messages.map((msg, idx) => (
             <div key={idx} className={`chat-message${msg.user === username ? ' own' : msg.user === 'System' ? ' system' : ''}`}>
               <span className="chat-user">{msg.user}:</span> <span>{msg.text}</span>
             </div>
           ))}
-          <div ref={messagesEndRef} />
-        </div>
-        <form className="chat-form" onSubmit={handleSend}>
+              <div ref={messagesEndRef} />
+            </div>
+            <form className="chat-form" onSubmit={handleSend}>
           <input
             type="text"
             placeholder="Type your message..."
@@ -104,8 +108,10 @@ const Chat: React.FC = () => {
             onChange={e => setMessage(e.target.value)}
             required
           />
-          <button type="submit">Send</button>
-        </form>
+              <button type="submit">Send</button>
+            </form>
+          </div>
+        </div>
       </main>
     </div>
   );

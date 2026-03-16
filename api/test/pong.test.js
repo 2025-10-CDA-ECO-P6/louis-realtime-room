@@ -134,6 +134,44 @@ describe('Backend Pong Game Manager', () => {
     expect(state.paddle2.y).toBeGreaterThan(oldY);
   });
 
+  it('should set player direction for continuous movement', () => {
+    manager.joinGame('room1', 'alice');
+    manager.joinGame('room1', 'bob');
+    const state = manager.getGame('room1');
+    state.status = 'playing';
+    manager.setPlayerDirection('room1', 'alice', 'up');
+    const oldY = state.paddle1.y;
+    manager.tick('room1');
+    expect(state.paddle1.y).toBeLessThan(oldY);
+  });
+
+  it('should clear player direction', () => {
+    manager.joinGame('room1', 'alice');
+    manager.joinGame('room1', 'bob');
+    const state = manager.getGame('room1');
+    state.status = 'playing';
+    manager.setPlayerDirection('room1', 'alice', 'up');
+    manager.clearPlayerDirection('room1', 'alice', 'up');
+    const oldY = state.paddle1.y;
+    // Ball will move but paddle should not
+    const ballX = state.ball.x;
+    manager.tick('room1');
+    expect(state.paddle1.y).toBe(oldY);
+    expect(state.ball.x).not.toBe(ballX);
+  });
+
+  it('should not clear direction if it does not match', () => {
+    manager.joinGame('room1', 'alice');
+    manager.joinGame('room1', 'bob');
+    const state = manager.getGame('room1');
+    state.status = 'playing';
+    manager.setPlayerDirection('room1', 'alice', 'up');
+    manager.clearPlayerDirection('room1', 'alice', 'down'); // wrong direction
+    const oldY = state.paddle1.y;
+    manager.tick('room1');
+    expect(state.paddle1.y).toBeLessThan(oldY); // still moves up
+  });
+
   it('should return game state for a room', () => {
     manager.joinGame('room1', 'alice');
     const state = manager.getGame('room1');

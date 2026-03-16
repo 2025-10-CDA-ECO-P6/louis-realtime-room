@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import {
   type PongState,
@@ -19,6 +19,7 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [gameState, setGameState] = useState<PongState | null>(null);
   const [joined, setJoined] = useState(false);
+  const heldKeysRef = useRef<Set<string>>(new Set());
 
   // Listen for game state updates
   useEffect(() => {
@@ -85,19 +86,24 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
   const isPlayer = gameState?.player1 === username || gameState?.player2 === username;
   const isSpectator = gameState && gameState.player1 && gameState.player2 && !isPlayer;
 
-  const handleKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      if (!isPlayer || gameState?.status !== 'playing') return;
-      if (e.key === 'ArrowUp') {
-        e.preventDefault();
-        socket.emit('pong:move', { room, direction: 'up' });
-      } else if (e.key === 'ArrowDown') {
-        e.preventDefault();
-        socket.emit('pong:move', { room, direction: 'down' });
-      }
-    },
-    [socket, room, isPlayer, gameState?.status],
-  );
+  // Continuous key tracking via keydown/keyup on the container
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (!isPlayer || gameState?.status !== 'playing') return;
+    const dir = e.key === 'ArrowUp' ? 'up' : e.key === 'ArrowDown' ? 'down' : null;
+    if (!dir) return;
+    e.preventDefault();
+    if (heldKeysRef.current.has(dir)) return; // already held
+    heldKeysRef.current.add(dir);
+    socket.emit('pong:startMove', { room, direction: dir });
+  };
+
+  const handleKeyUp = (e: React.KeyboardEvent) => {
+    const dir = e.key === 'ArrowUp' ? 'up' : e.key === 'ArrowDown' ? 'down' : null;
+    if (!dir) return;
+    if (!heldKeysRef.current.has(dir)) return;
+    heldKeysRef.current.delete(dir);
+    socket.emit('pong:stopMove', { room, direction: dir });
+  };
 
   return (
     <div
@@ -105,6 +111,7 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
       className="pong-container"
       tabIndex={0}
       onKeyDown={handleKeyDown}
+      onKeyUp={handleKeyUp}
     >
       <div className="pong-header">
         <h3>Pong</h3>

@@ -122,10 +122,16 @@ io.on('connection', (socket) => {
     );
   });
 
-  socket.on('pong:move', ({ room, direction }) => {
+  socket.on('pong:startMove', ({ room, direction }) => {
     const user = users[socket.id];
     if (!user) return;
-    pongManager.handleMove(room, user.username, direction);
+    pongManager.setPlayerDirection(room, user.username, direction);
+  });
+
+  socket.on('pong:stopMove', ({ room, direction }) => {
+    const user = users[socket.id];
+    if (!user) return;
+    pongManager.clearPlayerDirection(room, user.username, direction);
   });
 
   socket.on('disconnect', () => {
