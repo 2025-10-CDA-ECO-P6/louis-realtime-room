@@ -2,6 +2,7 @@ require('dotenv').config({ path: '../.env' });
 const express = require('express');
 const { createServer } = require('http');
 const { Server } = require('socket.io');
+const { PongGameManager } = require('./pongHandler');
 
 const app = express();
 const httpServer = createServer(app);
@@ -15,6 +16,8 @@ const io = new Server(httpServer, {
 const PORT = process.env.PORT || 3001;
 
 const users = {};
+const pongManager = new PongGameManager();
+const pongIntervals = {};
 
 app.get('/health', (_, res) => {
   res.status(200).json({ status: 'ok' });
@@ -57,6 +60,35 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Pong game events
+  socket.on('pong:join', ({ room }) => {
+    const user = users[socket.id];
+    if (!user) return;
+
+    const state = pongManager.joinGame(room, user.username);
+    io.to(room).emit('pong:state', state);
+
+    // Start game loop when both players are in
+    if (state.status === 'playing' && !pongIntervals[room]) {
+      pongIntervals[room] = setInterval(() => {
+        const updated = pongManager.tick(room);
+        if (updated) {
+          io.to(room).emit('pong:state', { ...updated });
+          if (updated.status === 'finished') {
+            clearInterval(pongIntervals[room]);
+            delete pongIntervals[room];
+          }
+        }
+      }, 1000 / 60);
+    }
+  });
+
+  socket.on('pong:move', ({ room, direction }) => {
+    const user = users[socket.id];
+    if (!user) return;
+    pongManager.handleMove(room, user.username, direction);
+  });
+
   socket.on('disconnect', () => {
     const user = users[socket.id];
     if (user) {
@@ -73,6 +105,17 @@ io.on('connection', (socket) => {
       
       io.to(user.room).emit('roomUsers', roomUsers);
       
+      // Clean up pong game if a player disconnects
+      const game = pongManager.getGame(user.room);
+      if (game && (game.player1 === user.username || game.player2 === user.username)) {
+        if (pongIntervals[user.room]) {
+          clearInterval(pongIntervals[user.room]);
+          delete pongIntervals[user.room];
+        }
+        pongManager.removeGame(user.room);
+        io.to(user.room).emit('pong:ended', { reason: `${user.username} left the game` });
+      }
+
       console.log(`${user.username} disconnected from room: ${user.room}`);
     }
   });

@@ -10,7 +10,7 @@ http {
         listen 80;
         server_name _;
 
-        resolver 8.8.8.8 valid=30s;
+        resolver ${DNS_RESOLVER} valid=30s;
 
         # Proxy Socket.IO requests to API
         location /socket.io/ {

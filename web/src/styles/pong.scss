@@ -1,0 +1,83 @@
+.pong-container {
+  margin-top: 1rem;
+  padding: 0.75rem;
+  background: #1a1a2e;
+  border-radius: 8px;
+  outline: none;
+
+  &:focus {
+    box-shadow: 0 0 0 2px #646cff;
+  }
+}
+
+.pong-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 0.5rem;
+
+  h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #fff;
+  }
+}
+
+.pong-scores {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #ccc;
+}
+
+.pong-score {
+  font-size: 1.4rem;
+  font-weight: bold;
+  color: #fff;
+}
+
+.pong-vs {
+  color: #666;
+}
+
+.pong-player {
+  font-size: 0.75rem;
+  color: #aaa;
+  max-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pong-canvas {
+  display: block;
+  width: 100%;
+  height: auto;
+  border-radius: 4px;
+  border: 1px solid #333;
+}
+
+.pong-start-btn {
+  display: block;
+  width: 100%;
+  margin-top: 0.5rem;
+  padding: 0.5rem;
+  background: #646cff;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.9rem;
+
+  &:hover {
+    background: #535bf2;
+  }
+}
+
+.pong-status {
+  text-align: center;
+  color: #aaa;
+  font-size: 0.85rem;
+  margin-top: 0.5rem;
+}

@@ -68,5 +68,7 @@ jobs:
     if: success()
   
     steps:
-      - name: Deploying on render 
-        run: curl "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+      - name: Deploy API on Render
+        run: curl "${{ secrets.RENDER_DEPLOY_HOOK_URL_API }}"
+      - name: Deploy Web on Render
+        run: curl "${{ secrets.RENDER_DEPLOY_HOOK_URL_WEB }}"

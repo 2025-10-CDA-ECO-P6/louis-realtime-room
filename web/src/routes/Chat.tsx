@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import '../styles/chat.scss';
+import '../styles/pong.scss';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { io, Socket } from 'socket.io-client';
+import PongGame from '../pong/PongGame';
 
 function useQuery() {
   return new URLSearchParams(useLocation().search);
@@ -78,6 +80,9 @@ const Chat: React.FC = () => {
             </span>
           ))}
         </div>
+        {socketRef.current && (
+          <PongGame socket={socketRef.current} username={username} room={room} />
+        )}
       </aside>
       <main className="chat-main">
         <div className="chat-header">
