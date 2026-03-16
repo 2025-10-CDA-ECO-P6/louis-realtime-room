@@ -4,7 +4,7 @@ export const PADDLE_HEIGHT = 80;
 export const PADDLE_WIDTH = 10;
 export const BALL_SIZE = 10;
 export const BALL_SPEED = 4;
-export const PADDLE_SPEED = 14;
+export const PADDLE_SPEED = 10;
 export const WIN_SCORE = 5;
 
 export interface Ball {

@@ -4,7 +4,7 @@ const PADDLE_HEIGHT = 80;
 const PADDLE_WIDTH = 10;
 const BALL_SIZE = 10;
 const BALL_SPEED = 4;
-const PADDLE_SPEED = 14;
+const PADDLE_SPEED = 10;
 const WIN_SCORE = 5;
 
 function createGameState() {
