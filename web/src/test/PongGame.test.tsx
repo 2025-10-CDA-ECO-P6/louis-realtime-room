@@ -62,6 +62,7 @@ describe('PongGame Component', () => {
         score1: 0,
         score2: 0,
         status: 'waiting',
+        countdown: null,
         player1: 'alice',
         player2: null,
         winner: null,
@@ -80,6 +81,7 @@ describe('PongGame Component', () => {
         score1: 3,
         score2: 2,
         status: 'playing',
+        countdown: null,
         player1: 'alice',
         player2: 'bob',
         winner: null,
@@ -99,12 +101,71 @@ describe('PongGame Component', () => {
         score1: 5,
         score2: 2,
         status: 'finished',
+        countdown: null,
         player1: 'alice',
         player2: 'bob',
         winner: 'alice',
       });
     });
     expect(screen.getByText(/alice wins/i)).toBeInTheDocument();
+  });
+
+  it('should show restart button when game is finished and user is a player', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:state', {
+        ball: { x: 400, y: 200, dx: 4, dy: 4 },
+        paddle1: { x: 10, y: 160 },
+        paddle2: { x: 780, y: 160 },
+        score1: 5,
+        score2: 2,
+        status: 'finished',
+        countdown: null,
+        player1: 'alice',
+        player2: 'bob',
+        winner: 'alice',
+      });
+    });
+    expect(screen.getByText('Restart')).toBeInTheDocument();
+  });
+
+  it('should emit pong:restart when Restart is clicked', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:state', {
+        ball: { x: 400, y: 200, dx: 4, dy: 4 },
+        paddle1: { x: 10, y: 160 },
+        paddle2: { x: 780, y: 160 },
+        score1: 5,
+        score2: 2,
+        status: 'finished',
+        countdown: null,
+        player1: 'alice',
+        player2: 'bob',
+        winner: 'alice',
+      });
+    });
+    fireEvent.click(screen.getByText('Restart'));
+    expect(mockSocket.emit).toHaveBeenCalledWith('pong:restart', { room: 'test' });
+  });
+
+  it('should show "Get ready!" during countdown', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:state', {
+        ball: { x: 400, y: 200, dx: 4, dy: 4 },
+        paddle1: { x: 10, y: 160 },
+        paddle2: { x: 780, y: 160 },
+        score1: 0,
+        score2: 0,
+        status: 'countdown',
+        countdown: 3,
+        player1: 'alice',
+        player2: 'bob',
+        winner: null,
+      });
+    });
+    expect(screen.getByText(/get ready/i)).toBeInTheDocument();
   });
 
   it('should show spectator label when user is not a player', () => {
@@ -117,6 +178,7 @@ describe('PongGame Component', () => {
         score1: 0,
         score2: 0,
         status: 'playing',
+        countdown: null,
         player1: 'alice',
         player2: 'bob',
         winner: null,
@@ -140,6 +202,7 @@ describe('PongGame Component', () => {
         score1: 0,
         score2: 0,
         status: 'playing',
+        countdown: null,
         player1: 'alice',
         player2: 'bob',
         winner: null,

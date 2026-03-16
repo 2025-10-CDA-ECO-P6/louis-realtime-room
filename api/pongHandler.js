@@ -11,6 +11,7 @@ const {
 class PongGameManager {
   constructor() {
     this.games = {};
+    this.countdownTimers = {};
   }
 
   joinGame(room, username) {
@@ -28,12 +29,63 @@ class PongGameManager {
       return state;
     }
 
-    // Second player joins
+    // Second player joins — start countdown
     if (!state.player2) {
       state.player2 = username;
-      state.status = 'playing';
+      state.status = 'countdown';
+      state.countdown = 3;
     }
 
+    return state;
+  }
+
+  startCountdown(room, onTick, onStart) {
+    const state = this.games[room];
+    if (!state) return;
+
+    state.status = 'countdown';
+    state.countdown = 3;
+    resetBall(state);
+
+    // Reset paddles
+    const { CANVAS_HEIGHT, PADDLE_HEIGHT } = require('./pongEngine.js');
+    state.paddle1.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+    state.paddle2.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
+
+    onTick(state);
+
+    if (this.countdownTimers[room]) {
+      clearInterval(this.countdownTimers[room]);
+    }
+
+    this.countdownTimers[room] = setInterval(() => {
+      const s = this.games[room];
+      if (!s) {
+        clearInterval(this.countdownTimers[room]);
+        delete this.countdownTimers[room];
+        return;
+      }
+      s.countdown--;
+      if (s.countdown <= 0) {
+        clearInterval(this.countdownTimers[room]);
+        delete this.countdownTimers[room];
+        s.status = 'playing';
+        s.countdown = null;
+        onStart(s);
+      } else {
+        onTick(s);
+      }
+    }, 1000);
+  }
+
+  restartGame(room, onTick, onStart) {
+    const state = this.games[room];
+    if (!state || state.status !== 'finished') return null;
+
+    state.score1 = 0;
+    state.score2 = 0;
+    state.winner = null;
+    this.startCountdown(room, onTick, onStart);
     return state;
   }
 
@@ -81,6 +133,10 @@ class PongGameManager {
   }
 
   removeGame(room) {
+    if (this.countdownTimers[room]) {
+      clearInterval(this.countdownTimers[room]);
+      delete this.countdownTimers[room];
+    }
     delete this.games[room];
   }
 }

@@ -4,7 +4,7 @@ export const PADDLE_HEIGHT = 80;
 export const PADDLE_WIDTH = 10;
 export const BALL_SIZE = 10;
 export const BALL_SPEED = 4;
-export const PADDLE_SPEED = 6;
+export const PADDLE_SPEED = 14;
 export const WIN_SCORE = 5;
 
 export interface Ball {
@@ -19,7 +19,7 @@ export interface Paddle {
   y: number;
 }
 
-export type GameStatus = 'waiting' | 'playing' | 'finished';
+export type GameStatus = 'waiting' | 'countdown' | 'playing' | 'finished';
 
 export interface PongState {
   ball: Ball;
@@ -28,6 +28,7 @@ export interface PongState {
   score1: number;
   score2: number;
   status: GameStatus;
+  countdown: number | null;
   player1: string | null;
   player2: string | null;
   winner: string | null;
@@ -52,6 +53,7 @@ export function createGameState(): PongState {
     score1: 0,
     score2: 0,
     status: 'waiting',
+    countdown: null,
     player1: null,
     player2: null,
     winner: null,

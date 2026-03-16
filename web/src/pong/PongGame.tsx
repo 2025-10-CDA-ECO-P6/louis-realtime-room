@@ -60,11 +60,26 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
     // Ball
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(gameState.ball.x, gameState.ball.y, BALL_SIZE, BALL_SIZE);
+
+    // Countdown overlay
+    if (gameState.status === 'countdown' && gameState.countdown != null) {
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+      ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+      ctx.fillStyle = '#ffffff';
+      ctx.font = 'bold 120px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(gameState.countdown), CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+    }
   }, [gameState]);
 
   const handleJoin = () => {
     socket.emit('pong:join', { room });
     setJoined(true);
+  };
+
+  const handleRestart = () => {
+    socket.emit('pong:restart', { room });
   };
 
   const isPlayer = gameState?.player1 === username || gameState?.player2 === username;
@@ -74,8 +89,10 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
     (e: React.KeyboardEvent) => {
       if (!isPlayer || gameState?.status !== 'playing') return;
       if (e.key === 'ArrowUp') {
+        e.preventDefault();
         socket.emit('pong:move', { room, direction: 'up' });
       } else if (e.key === 'ArrowDown') {
+        e.preventDefault();
         socket.emit('pong:move', { room, direction: 'down' });
       }
     },
@@ -120,12 +137,23 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
         <p className="pong-status">Waiting for opponent...</p>
       )}
 
+      {gameState?.status === 'countdown' && (
+        <p className="pong-status">Get ready!</p>
+      )}
+
       {isSpectator && gameState?.status === 'playing' && (
         <p className="pong-status">Spectating</p>
       )}
 
       {gameState?.status === 'finished' && gameState.winner && (
-        <p className="pong-status">{gameState.winner} wins!</p>
+        <div className="pong-finished">
+          <p className="pong-status">{gameState.winner} wins!</p>
+          {isPlayer && (
+            <button className="pong-start-btn" onClick={handleRestart}>
+              Restart
+            </button>
+          )}
+        </div>
       )}
     </div>
   );

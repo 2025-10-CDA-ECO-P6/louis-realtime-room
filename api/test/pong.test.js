@@ -90,12 +90,13 @@ describe('Backend Pong Game Manager', () => {
     expect(state.status).toBe('waiting');
   });
 
-  it('should add second player and start the game', () => {
+  it('should add second player and start countdown', () => {
     manager.joinGame('room1', 'alice');
     const state = manager.joinGame('room1', 'bob');
     expect(state.player1).toBe('alice');
     expect(state.player2).toBe('bob');
-    expect(state.status).toBe('playing');
+    expect(state.status).toBe('countdown');
+    expect(state.countdown).toBe(3);
   });
 
   it('should not add more than 2 players', () => {
@@ -117,6 +118,7 @@ describe('Backend Pong Game Manager', () => {
     manager.joinGame('room1', 'alice');
     manager.joinGame('room1', 'bob');
     const state = manager.getGame('room1');
+    state.status = 'playing';
     const oldY = state.paddle1.y;
     manager.handleMove('room1', 'alice', 'up');
     expect(state.paddle1.y).toBeLessThan(oldY);
@@ -126,6 +128,7 @@ describe('Backend Pong Game Manager', () => {
     manager.joinGame('room1', 'alice');
     manager.joinGame('room1', 'bob');
     const state = manager.getGame('room1');
+    state.status = 'playing';
     const oldY = state.paddle2.y;
     manager.handleMove('room1', 'bob', 'down');
     expect(state.paddle2.y).toBeGreaterThan(oldY);
@@ -142,6 +145,7 @@ describe('Backend Pong Game Manager', () => {
     manager.joinGame('room1', 'alice');
     manager.joinGame('room1', 'bob');
     const state = manager.getGame('room1');
+    state.status = 'playing';
     const oldX = state.ball.x;
     manager.tick('room1');
     expect(state.ball.x).not.toBe(oldX);
@@ -151,6 +155,7 @@ describe('Backend Pong Game Manager', () => {
     manager.joinGame('room1', 'alice');
     manager.joinGame('room1', 'bob');
     const state = manager.getGame('room1');
+    state.status = 'playing';
     state.ball.x = -20;
     manager.tick('room1');
     expect(state.score2).toBe(1);
@@ -161,12 +166,39 @@ describe('Backend Pong Game Manager', () => {
     manager.joinGame('room1', 'alice');
     manager.joinGame('room1', 'bob');
     const state = manager.getGame('room1');
+    state.status = 'playing';
     state.score1 = WIN_SCORE - 1;
     state.ball.x = CANVAS_WIDTH + 20;
     manager.tick('room1');
     expect(state.score1).toBe(WIN_SCORE);
     expect(state.status).toBe('finished');
     expect(state.winner).toBe('alice');
+  });
+
+  it('should restart game with countdown', () => {
+    manager.joinGame('room1', 'alice');
+    manager.joinGame('room1', 'bob');
+    const state = manager.getGame('room1');
+    state.status = 'finished';
+    state.score1 = 5;
+    state.score2 = 3;
+    state.winner = 'alice';
+
+    const ticks = [];
+    manager.restartGame(
+      'room1',
+      (s) => ticks.push({ ...s }),
+      () => {},
+    );
+
+    expect(state.score1).toBe(0);
+    expect(state.score2).toBe(0);
+    expect(state.winner).toBeNull();
+    expect(state.status).toBe('countdown');
+    expect(state.countdown).toBe(3);
+
+    // Clean up timer
+    manager.removeGame('room1');
   });
 
   it('should remove game on cleanup', () => {

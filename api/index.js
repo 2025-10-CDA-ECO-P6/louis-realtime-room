@@ -68,19 +68,58 @@ io.on('connection', (socket) => {
     const state = pongManager.joinGame(room, user.username);
     io.to(room).emit('pong:state', state);
 
-    // Start game loop when both players are in
-    if (state.status === 'playing' && !pongIntervals[room]) {
-      pongIntervals[room] = setInterval(() => {
-        const updated = pongManager.tick(room);
-        if (updated) {
-          io.to(room).emit('pong:state', { ...updated });
-          if (updated.status === 'finished') {
-            clearInterval(pongIntervals[room]);
-            delete pongIntervals[room];
-          }
-        }
-      }, 1000 / 60);
+    // Start countdown when both players are in
+    if (state.status === 'countdown' && !pongIntervals[room]) {
+      pongManager.startCountdown(
+        room,
+        (s) => io.to(room).emit('pong:state', { ...s }),
+        (s) => {
+          io.to(room).emit('pong:state', { ...s });
+          // Start game loop
+          pongIntervals[room] = setInterval(() => {
+            const updated = pongManager.tick(room);
+            if (updated) {
+              io.to(room).emit('pong:state', { ...updated });
+              if (updated.status === 'finished') {
+                clearInterval(pongIntervals[room]);
+                delete pongIntervals[room];
+              }
+            }
+          }, 1000 / 60);
+        },
+      );
     }
+  });
+
+  socket.on('pong:restart', ({ room }) => {
+    const user = users[socket.id];
+    if (!user) return;
+    const game = pongManager.getGame(room);
+    if (!game || game.status !== 'finished') return;
+    if (game.player1 !== user.username && game.player2 !== user.username) return;
+
+    if (pongIntervals[room]) {
+      clearInterval(pongIntervals[room]);
+      delete pongIntervals[room];
+    }
+
+    pongManager.restartGame(
+      room,
+      (s) => io.to(room).emit('pong:state', { ...s }),
+      (s) => {
+        io.to(room).emit('pong:state', { ...s });
+        pongIntervals[room] = setInterval(() => {
+          const updated = pongManager.tick(room);
+          if (updated) {
+            io.to(room).emit('pong:state', { ...updated });
+            if (updated.status === 'finished') {
+              clearInterval(pongIntervals[room]);
+              delete pongIntervals[room];
+            }
+          }
+        }, 1000 / 60);
+      },
+    );
   });
 
   socket.on('pong:move', ({ room, direction }) => {

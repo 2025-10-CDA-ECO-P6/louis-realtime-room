@@ -80,14 +80,14 @@ const Chat: React.FC = () => {
             </span>
           ))}
         </div>
-        {socketRef.current && (
-          <PongGame socket={socketRef.current} username={username} room={room} />
-        )}
       </aside>
       <main className="chat-main">
         <div className="chat-header">
           <h1>Realtime Room</h1>
         </div>
+        {socketRef.current && (
+          <PongGame socket={socketRef.current} username={username} room={room} />
+        )}
         <div className="chat-messages">
           {messages.map((msg, idx) => (
             <div key={idx} className={`chat-message${msg.user === username ? ' own' : msg.user === 'System' ? ' system' : ''}`}>
