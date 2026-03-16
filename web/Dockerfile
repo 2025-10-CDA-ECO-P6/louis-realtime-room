@@ -25,6 +25,9 @@ FROM nginx:1.25-alpine
 
 COPY --from=builder /app/dist /usr/share/nginx/html
 COPY --from=builder /app/nginx.conf.template /etc/nginx/nginx.conf.template
+COPY --from=builder /app/docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh
 
 RUN addgroup --system --gid 1001 webgroup 
 RUN adduser --system --uid 1001 web
@@ -34,15 +37,4 @@ ENV API_INTERNAL_URL=http://api:3001
 
 EXPOSE 80
 
-# Create entrypoint script to substitute env vars and start nginx
-RUN echo '#!/bin/sh' > /docker-entrypoint-custom.sh && \
-    echo '# If API_INTERNAL_URL does not start with http, prepend https://' >> /docker-entrypoint-custom.sh && \
-    echo 'if ! echo "$API_INTERNAL_URL" | grep -q "^http"; then' >> /docker-entrypoint-custom.sh && \
-    echo '  API_INTERNAL_URL="https://$API_INTERNAL_URL"' >> /docker-entrypoint-custom.sh && \
-    echo 'fi' >> /docker-entrypoint-custom.sh && \
-    echo 'export API_INTERNAL_URL' >> /docker-entrypoint-custom.sh && \
-    echo 'envsubst "\$API_INTERNAL_URL" < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf' >> /docker-entrypoint-custom.sh && \
-    echo 'exec nginx -g "daemon off;"' >> /docker-entrypoint-custom.sh && \
-    chmod +x /docker-entrypoint-custom.sh
-
-CMD ["/docker-entrypoint-custom.sh"]
+CMD ["/docker-entrypoint.sh"]

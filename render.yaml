@@ -18,7 +18,4 @@ services:
     plan: free
     envVars:
       - key: API_INTERNAL_URL
-        fromService:
-          type: web
-          name: https://louis-realtime-room-api.onrender.com
-          property: host
+        value: https://louis-realtime-room-api.onrender.com
