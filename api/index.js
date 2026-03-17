@@ -18,10 +18,48 @@ const PORT = process.env.PORT || 3001;
 const users = {};
 const pongManager = new PongGameManager();
 const pongIntervals = {};
+const nextMatchTimers = {};
 
 app.get('/health', (_, res) => {
   res.status(200).json({ status: 'ok' });
 });
+
+function broadcastLobby(room) {
+  io.to(room).emit('pong:lobby', pongManager.getLobby(room));
+}
+
+function startGameForRoom(room) {
+  pongManager.startCountdown(
+    room,
+    (s) => {
+      io.to(room).emit('pong:state', { ...s });
+      broadcastLobby(room);
+    },
+    (s) => {
+      io.to(room).emit('pong:state', { ...s });
+      broadcastLobby(room);
+      pongIntervals[room] = setInterval(() => {
+        const updated = pongManager.tick(room);
+        if (updated) {
+          io.to(room).emit('pong:state', { ...updated });
+          if (updated.status === 'finished') {
+            clearInterval(pongIntervals[room]);
+            delete pongIntervals[room];
+            broadcastLobby(room);
+            // Auto-start next match after delay
+            nextMatchTimers[room] = setTimeout(() => {
+              delete nextMatchTimers[room];
+              if (pongManager.tryStartMatch(room)) {
+                broadcastLobby(room);
+                startGameForRoom(room);
+              }
+            }, 3000);
+          }
+        }
+      }, 1000 / 60);
+    },
+  );
+}
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
@@ -47,6 +85,13 @@ io.on('connection', (socket) => {
     
     io.to(room).emit('roomUsers', roomUsers);
     
+    // Send current pong lobby/game state to new joiner
+    socket.emit('pong:lobby', pongManager.getLobby(room));
+    const currentGame = pongManager.getGame(room);
+    if (currentGame) {
+      socket.emit('pong:state', { ...currentGame });
+    }
+
     console.log(`${username} joined room: ${room}`);
   });
 
@@ -61,65 +106,24 @@ io.on('connection', (socket) => {
   });
 
   // Pong game events
-  socket.on('pong:join', ({ room }) => {
+  socket.on('pong:queue', ({ room }) => {
     const user = users[socket.id];
     if (!user) return;
+    pongManager.joinQueue(room, user.username);
+    broadcastLobby(room);
 
-    const state = pongManager.joinGame(room, user.username);
-    io.to(room).emit('pong:state', state);
-
-    // Start countdown when both players are in
-    if (state.status === 'countdown' && !pongIntervals[room]) {
-      pongManager.startCountdown(
-        room,
-        (s) => io.to(room).emit('pong:state', { ...s }),
-        (s) => {
-          io.to(room).emit('pong:state', { ...s });
-          // Start game loop
-          pongIntervals[room] = setInterval(() => {
-            const updated = pongManager.tick(room);
-            if (updated) {
-              io.to(room).emit('pong:state', { ...updated });
-              if (updated.status === 'finished') {
-                clearInterval(pongIntervals[room]);
-                delete pongIntervals[room];
-              }
-            }
-          }, 1000 / 60);
-        },
-      );
+    // Try to start match if enough players
+    if (pongManager.tryStartMatch(room)) {
+      broadcastLobby(room);
+      startGameForRoom(room);
     }
   });
 
-  socket.on('pong:restart', ({ room }) => {
+  socket.on('pong:dequeue', ({ room }) => {
     const user = users[socket.id];
     if (!user) return;
-    const game = pongManager.getGame(room);
-    if (!game || game.status !== 'finished') return;
-    if (game.player1 !== user.username && game.player2 !== user.username) return;
-
-    if (pongIntervals[room]) {
-      clearInterval(pongIntervals[room]);
-      delete pongIntervals[room];
-    }
-
-    pongManager.restartGame(
-      room,
-      (s) => io.to(room).emit('pong:state', { ...s }),
-      (s) => {
-        io.to(room).emit('pong:state', { ...s });
-        pongIntervals[room] = setInterval(() => {
-          const updated = pongManager.tick(room);
-          if (updated) {
-            io.to(room).emit('pong:state', { ...updated });
-            if (updated.status === 'finished') {
-              clearInterval(pongIntervals[room]);
-              delete pongIntervals[room];
-            }
-          }
-        }, 1000 / 60);
-      },
-    );
+    pongManager.leaveQueue(room, user.username);
+    broadcastLobby(room);
   });
 
   socket.on('pong:startMove', ({ room, direction }) => {
@@ -151,15 +155,21 @@ io.on('connection', (socket) => {
       io.to(user.room).emit('roomUsers', roomUsers);
       
       // Clean up pong game if a player disconnects
+      pongManager.leaveQueue(user.room, user.username);
       const game = pongManager.getGame(user.room);
       if (game && (game.player1 === user.username || game.player2 === user.username)) {
         if (pongIntervals[user.room]) {
           clearInterval(pongIntervals[user.room]);
           delete pongIntervals[user.room];
         }
+        if (nextMatchTimers[user.room]) {
+          clearTimeout(nextMatchTimers[user.room]);
+          delete nextMatchTimers[user.room];
+        }
         pongManager.removeGame(user.room);
         io.to(user.room).emit('pong:ended', { reason: `${user.username} left the game` });
       }
+      broadcastLobby(user.room);
 
       console.log(`${user.username} disconnected from room: ${user.room}`);
     }

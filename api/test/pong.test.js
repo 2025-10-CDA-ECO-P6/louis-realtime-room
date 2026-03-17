@@ -83,40 +83,118 @@ describe('Backend Pong Game Manager', () => {
     manager = new PongGameManager();
   });
 
-  it('should create a game for a room when first player joins', () => {
-    const state = manager.joinGame('room1', 'alice');
-    expect(state.player1).toBe('alice');
-    expect(state.player2).toBeNull();
-    expect(state.status).toBe('waiting');
+  // Queue management
+  it('should add user to queue', () => {
+    manager.joinQueue('room1', 'alice');
+    const lobby = manager.getLobby('room1');
+    expect(lobby.queue).toEqual(['alice']);
+    expect(lobby.gameStatus).toBe('idle');
   });
 
-  it('should add second player and start countdown', () => {
-    manager.joinGame('room1', 'alice');
-    const state = manager.joinGame('room1', 'bob');
-    expect(state.player1).toBe('alice');
-    expect(state.player2).toBe('bob');
-    expect(state.status).toBe('countdown');
-    expect(state.countdown).toBe(3);
+  it('should not add same user to queue twice', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'alice');
+    expect(manager.getLobby('room1').queue).toEqual(['alice']);
   });
 
-  it('should not add more than 2 players', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
-    const state = manager.joinGame('room1', 'charlie');
-    // charlie should not be added as a player
-    expect(state.player1).toBe('alice');
-    expect(state.player2).toBe('bob');
+  it('should remove user from queue', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.leaveQueue('room1', 'alice');
+    expect(manager.getLobby('room1').queue).toEqual(['bob']);
   });
 
-  it('should not let same player join twice', () => {
-    manager.joinGame('room1', 'alice');
-    const state = manager.joinGame('room1', 'alice');
-    expect(state.player2).toBeNull();
+  it('should preserve queue order', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.joinQueue('room1', 'charlie');
+    expect(manager.getLobby('room1').queue).toEqual(['alice', 'bob', 'charlie']);
   });
 
+  // Match starting
+  it('should start match when 2 in queue and no active game', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    const started = manager.tryStartMatch('room1');
+    expect(started).toBe(true);
+    const game = manager.getGame('room1');
+    expect(game.player1).toBe('alice');
+    expect(game.player2).toBe('bob');
+    expect(game.status).toBe('countdown');
+    expect(manager.getLobby('room1').queue).toEqual([]);
+  });
+
+  it('should not start match with fewer than 2 in queue', () => {
+    manager.joinQueue('room1', 'alice');
+    expect(manager.tryStartMatch('room1')).toBe(false);
+  });
+
+  it('should not start match if game is in progress', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
+    manager.getGame('room1').status = 'playing';
+    manager.joinQueue('room1', 'charlie');
+    manager.joinQueue('room1', 'dave');
+    expect(manager.tryStartMatch('room1')).toBe(false);
+  });
+
+  it('should not let active player join queue', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
+    manager.joinQueue('room1', 'alice');
+    expect(manager.getLobby('room1').queue).toEqual([]);
+  });
+
+  it('should let player of finished game join queue', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
+    manager.getGame('room1').status = 'finished';
+    manager.joinQueue('room1', 'alice');
+    expect(manager.getLobby('room1').queue).toEqual(['alice']);
+  });
+
+  it('should start next match after game finishes', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.joinQueue('room1', 'charlie');
+    manager.joinQueue('room1', 'dave');
+    manager.tryStartMatch('room1');
+    manager.getGame('room1').status = 'finished';
+    manager.getGame('room1').winner = 'alice';
+    const started = manager.tryStartMatch('room1');
+    expect(started).toBe(true);
+    const lobby = manager.getLobby('room1');
+    expect(lobby.player1).toBe('charlie');
+    expect(lobby.player2).toBe('dave');
+  });
+
+  // Lobby state
+  it('should return idle lobby for empty room', () => {
+    const lobby = manager.getLobby('room1');
+    expect(lobby.queue).toEqual([]);
+    expect(lobby.player1).toBeNull();
+    expect(lobby.gameStatus).toBe('idle');
+  });
+
+  it('should return correct lobby during game', () => {
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
+    manager.getGame('room1').status = 'playing';
+    const lobby = manager.getLobby('room1');
+    expect(lobby.player1).toBe('alice');
+    expect(lobby.player2).toBe('bob');
+    expect(lobby.gameStatus).toBe('playing');
+  });
+
+  // Game mechanics
   it('should handle player move', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     const oldY = state.paddle1.y;
@@ -125,8 +203,9 @@ describe('Backend Pong Game Manager', () => {
   });
 
   it('should move paddle2 for player2', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     const oldY = state.paddle2.y;
@@ -135,8 +214,9 @@ describe('Backend Pong Game Manager', () => {
   });
 
   it('should set player direction for continuous movement', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     manager.setPlayerDirection('room1', 'alice', 'up');
@@ -146,14 +226,14 @@ describe('Backend Pong Game Manager', () => {
   });
 
   it('should clear player direction', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     manager.setPlayerDirection('room1', 'alice', 'up');
     manager.clearPlayerDirection('room1', 'alice', 'up');
     const oldY = state.paddle1.y;
-    // Ball will move but paddle should not
     const ballX = state.ball.x;
     manager.tick('room1');
     expect(state.paddle1.y).toBe(oldY);
@@ -161,27 +241,30 @@ describe('Backend Pong Game Manager', () => {
   });
 
   it('should not clear direction if it does not match', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     manager.setPlayerDirection('room1', 'alice', 'up');
-    manager.clearPlayerDirection('room1', 'alice', 'down'); // wrong direction
+    manager.clearPlayerDirection('room1', 'alice', 'down');
     const oldY = state.paddle1.y;
     manager.tick('room1');
-    expect(state.paddle1.y).toBeLessThan(oldY); // still moves up
+    expect(state.paddle1.y).toBeLessThan(oldY);
   });
 
   it('should return game state for a room', () => {
-    manager.joinGame('room1', 'alice');
-    const state = manager.getGame('room1');
-    expect(state).toBeDefined();
-    expect(state.player1).toBe('alice');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
+    expect(manager.getGame('room1')).toBeDefined();
+    expect(manager.getGame('room1').player1).toBe('alice');
   });
 
   it('should handle game tick and update ball', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     const oldX = state.ball.x;
@@ -190,8 +273,9 @@ describe('Backend Pong Game Manager', () => {
   });
 
   it('should increment score and reset ball on scoring', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     state.ball.x = -20;
@@ -201,8 +285,9 @@ describe('Backend Pong Game Manager', () => {
   });
 
   it('should finish game when a player reaches WIN_SCORE', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     const state = manager.getGame('room1');
     state.status = 'playing';
     state.score1 = WIN_SCORE - 1;
@@ -213,34 +298,10 @@ describe('Backend Pong Game Manager', () => {
     expect(state.winner).toBe('alice');
   });
 
-  it('should restart game with countdown', () => {
-    manager.joinGame('room1', 'alice');
-    manager.joinGame('room1', 'bob');
-    const state = manager.getGame('room1');
-    state.status = 'finished';
-    state.score1 = 5;
-    state.score2 = 3;
-    state.winner = 'alice';
-
-    const ticks = [];
-    manager.restartGame(
-      'room1',
-      (s) => ticks.push({ ...s }),
-      () => {},
-    );
-
-    expect(state.score1).toBe(0);
-    expect(state.score2).toBe(0);
-    expect(state.winner).toBeNull();
-    expect(state.status).toBe('countdown');
-    expect(state.countdown).toBe(3);
-
-    // Clean up timer
-    manager.removeGame('room1');
-  });
-
   it('should remove game on cleanup', () => {
-    manager.joinGame('room1', 'alice');
+    manager.joinQueue('room1', 'alice');
+    manager.joinQueue('room1', 'bob');
+    manager.tryStartMatch('room1');
     manager.removeGame('room1');
     expect(manager.getGame('room1')).toBeUndefined();
   });

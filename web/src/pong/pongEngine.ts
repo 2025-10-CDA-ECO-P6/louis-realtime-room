@@ -34,6 +34,14 @@ export interface PongState {
   winner: string | null;
 }
 
+export interface LobbyState {
+  queue: string[];
+  player1: string | null;
+  player2: string | null;
+  gameStatus: GameStatus | 'idle';
+  winner: string | null;
+}
+
 export function createGameState(): PongState {
   return {
     ball: {

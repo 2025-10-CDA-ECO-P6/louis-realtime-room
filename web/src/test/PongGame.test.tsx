@@ -40,40 +40,86 @@ describe('PongGame Component', () => {
     expect(screen.getByTestId('pong-canvas')).toBeInTheDocument();
   });
 
-  it('should show a "Start Pong" button when no game is active', () => {
+  it('should show a "Join Queue" button initially', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
-    expect(screen.getByText('Start Pong')).toBeInTheDocument();
+    expect(screen.getByText('Join Queue')).toBeInTheDocument();
   });
 
-  it('should emit pong:join when Start Pong is clicked', () => {
+  it('should emit pong:queue when Join Queue is clicked', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
-    fireEvent.click(screen.getByText('Start Pong'));
-    expect(mockSocket.emit).toHaveBeenCalledWith('pong:join', { room: 'test' });
+    fireEvent.click(screen.getByText('Join Queue'));
+    expect(mockSocket.emit).toHaveBeenCalledWith('pong:queue', { room: 'test' });
   });
 
-  it('should show "Waiting for opponent..." when status is waiting', () => {
+  it('should show Leave Queue button when user is in queue', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
-    fireEvent.click(screen.getByText('Start Pong'));
     act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 0,
-        score2: 0,
-        status: 'waiting',
-        countdown: null,
-        player1: 'alice',
+      mockSocket._trigger('pong:lobby', {
+        queue: ['alice'],
+        player1: null,
         player2: null,
+        gameStatus: 'idle',
         winner: null,
       });
     });
-    expect(screen.getByText(/waiting for opponent/i)).toBeInTheDocument();
+    expect(screen.getByText(/leave queue/i)).toBeInTheDocument();
   });
 
-  it('should display scores', () => {
+  it('should emit pong:dequeue when Leave Queue is clicked', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
     act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: ['alice'],
+        player1: null,
+        player2: null,
+        gameStatus: 'idle',
+        winner: null,
+      });
+    });
+    fireEvent.click(screen.getByText(/leave queue/i));
+    expect(mockSocket.emit).toHaveBeenCalledWith('pong:dequeue', { room: 'test' });
+  });
+
+  it('should show queue position', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: ['bob', 'alice'],
+        player1: null,
+        player2: null,
+        gameStatus: 'idle',
+        winner: null,
+      });
+    });
+    expect(screen.getByText(/leave queue \(#2\)/i)).toBeInTheDocument();
+  });
+
+  it('should display the queue list', () => {
+    render(<PongGame socket={mockSocket} username="charlie" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: ['alice', 'bob'],
+        player1: null,
+        player2: null,
+        gameStatus: 'idle',
+        winner: null,
+      });
+    });
+    expect(screen.getByTestId('pong-queue')).toBeInTheDocument();
+    expect(screen.getByText('alice')).toBeInTheDocument();
+    expect(screen.getByText('bob')).toBeInTheDocument();
+  });
+
+  it('should display scores during game', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
+        player1: 'alice',
+        player2: 'bob',
+        gameStatus: 'playing',
+        winner: null,
+      });
       mockSocket._trigger('pong:state', {
         ball: { x: 400, y: 200, dx: 4, dy: 4 },
         paddle1: { x: 10, y: 160 },
@@ -87,124 +133,109 @@ describe('PongGame Component', () => {
         winner: null,
       });
     });
-    expect(screen.getByText('3')).toBeInTheDocument();
-    expect(screen.getByText('2')).toBeInTheDocument();
-  });
-
-  it('should show winner when game is finished', () => {
-    render(<PongGame socket={mockSocket} username="alice" room="test" />);
-    act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 5,
-        score2: 2,
-        status: 'finished',
-        countdown: null,
-        player1: 'alice',
-        player2: 'bob',
-        winner: 'alice',
-      });
-    });
-    expect(screen.getByText(/alice wins/i)).toBeInTheDocument();
-  });
-
-  it('should show restart button when game is finished and user is a player', () => {
-    render(<PongGame socket={mockSocket} username="alice" room="test" />);
-    act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 5,
-        score2: 2,
-        status: 'finished',
-        countdown: null,
-        player1: 'alice',
-        player2: 'bob',
-        winner: 'alice',
-      });
-    });
-    expect(screen.getByText('Restart')).toBeInTheDocument();
-  });
-
-  it('should emit pong:restart when Restart is clicked', () => {
-    render(<PongGame socket={mockSocket} username="alice" room="test" />);
-    act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 5,
-        score2: 2,
-        status: 'finished',
-        countdown: null,
-        player1: 'alice',
-        player2: 'bob',
-        winner: 'alice',
-      });
-    });
-    fireEvent.click(screen.getByText('Restart'));
-    expect(mockSocket.emit).toHaveBeenCalledWith('pong:restart', { room: 'test' });
+    expect(screen.getByTestId('score1').textContent).toBe('3');
+    expect(screen.getByTestId('score2').textContent).toBe('2');
   });
 
   it('should show "Get ready!" during countdown', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
     act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 0,
-        score2: 0,
-        status: 'countdown',
-        countdown: 3,
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
         player1: 'alice',
         player2: 'bob',
+        gameStatus: 'countdown',
         winner: null,
       });
     });
     expect(screen.getByText(/get ready/i)).toBeInTheDocument();
   });
 
+  it('should show winner when game is finished', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
+        player1: 'alice',
+        player2: 'bob',
+        gameStatus: 'finished',
+        winner: 'alice',
+      });
+    });
+    expect(screen.getByText(/alice wins/i)).toBeInTheDocument();
+  });
+
   it('should show spectator label when user is not a player', () => {
     render(<PongGame socket={mockSocket} username="charlie" room="test" />);
     act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 0,
-        score2: 0,
-        status: 'playing',
-        countdown: null,
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
         player1: 'alice',
         player2: 'bob',
+        gameStatus: 'playing',
         winner: null,
       });
     });
     expect(screen.getByText(/spectating/i)).toBeInTheDocument();
   });
 
+  it('should show queue position when spectating and in queue', () => {
+    render(<PongGame socket={mockSocket} username="charlie" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: ['charlie'],
+        player1: 'alice',
+        player2: 'bob',
+        gameStatus: 'playing',
+        winner: null,
+      });
+    });
+    expect(screen.getByText(/spectating.*#1 in queue/i)).toBeInTheDocument();
+  });
+
+  it('should hide Join Queue when user is actively playing', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
+        player1: 'alice',
+        player2: 'bob',
+        gameStatus: 'playing',
+        winner: null,
+      });
+    });
+    expect(screen.queryByText('Join Queue')).not.toBeInTheDocument();
+  });
+
+  it('should show Join Queue after game finishes for players', () => {
+    render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    act(() => {
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
+        player1: 'alice',
+        player2: 'bob',
+        gameStatus: 'finished',
+        winner: 'alice',
+      });
+    });
+    expect(screen.getByText('Join Queue')).toBeInTheDocument();
+  });
+
   it('should register socket listeners on mount', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
+    expect(mockSocket.on).toHaveBeenCalledWith('pong:lobby', expect.any(Function));
     expect(mockSocket.on).toHaveBeenCalledWith('pong:state', expect.any(Function));
+    expect(mockSocket.on).toHaveBeenCalledWith('pong:ended', expect.any(Function));
   });
 
   it('should emit pong:startMove on arrow key press when player', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
     act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 0,
-        score2: 0,
-        status: 'playing',
-        countdown: null,
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
         player1: 'alice',
         player2: 'bob',
+        gameStatus: 'playing',
         winner: null,
       });
     });
@@ -215,16 +246,11 @@ describe('PongGame Component', () => {
   it('should emit pong:stopMove on arrow key release when player', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
     act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 0,
-        score2: 0,
-        status: 'playing',
-        countdown: null,
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
         player1: 'alice',
         player2: 'bob',
+        gameStatus: 'playing',
         winner: null,
       });
     });
@@ -237,16 +263,11 @@ describe('PongGame Component', () => {
   it('should not emit duplicate pong:startMove for held key', () => {
     render(<PongGame socket={mockSocket} username="alice" room="test" />);
     act(() => {
-      mockSocket._trigger('pong:state', {
-        ball: { x: 400, y: 200, dx: 4, dy: 4 },
-        paddle1: { x: 10, y: 160 },
-        paddle2: { x: 780, y: 160 },
-        score1: 0,
-        score2: 0,
-        status: 'playing',
-        countdown: null,
+      mockSocket._trigger('pong:lobby', {
+        queue: [],
         player1: 'alice',
         player2: 'bob',
+        gameStatus: 'playing',
         winner: null,
       });
     });

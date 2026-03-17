@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import type { Socket } from 'socket.io-client';
 import {
   type PongState,
+  type LobbyState,
   CANVAS_WIDTH,
   CANVAS_HEIGHT,
   PADDLE_WIDTH,
@@ -15,33 +16,54 @@ interface PongGameProps {
   room: string;
 }
 
+const defaultLobby: LobbyState = {
+  queue: [],
+  player1: null,
+  player2: null,
+  gameStatus: 'idle',
+  winner: null,
+};
+
 const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [lobby, setLobby] = useState<LobbyState>(defaultLobby);
   const [gameState, setGameState] = useState<PongState | null>(null);
-  const [joined, setJoined] = useState(false);
   const heldKeysRef = useRef<Set<string>>(new Set());
 
-  // Listen for game state updates
   useEffect(() => {
-    const handleState = (state: PongState) => {
-      setGameState(state);
-    };
+    const handleLobby = (state: LobbyState) => setLobby(state);
+    const handleState = (state: PongState) => setGameState(state);
+    const handleEnded = () => setGameState(null);
+
+    socket.on('pong:lobby', handleLobby);
     socket.on('pong:state', handleState);
+    socket.on('pong:ended', handleEnded);
     return () => {
+      socket.off('pong:lobby', handleLobby);
       socket.off('pong:state', handleState);
+      socket.off('pong:ended', handleEnded);
     };
   }, [socket]);
 
   // Draw on canvas whenever gameState changes
   useEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || !gameState) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
     // Background
     ctx.fillStyle = '#1a1a2e';
     ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+    if (!gameState) {
+      ctx.fillStyle = '#444';
+      ctx.font = '24px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('Waiting for match...', CANVAS_WIDTH / 2, CANVAS_HEIGHT / 2);
+      return;
+    }
 
     // Center line
     ctx.setLineDash([5, 10]);
@@ -74,25 +96,22 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
     }
   }, [gameState]);
 
-  const handleJoin = () => {
-    socket.emit('pong:join', { room });
-    setJoined(true);
-  };
+  const isPlayer = lobby.player1 === username || lobby.player2 === username;
+  const isInQueue = lobby.queue.includes(username);
+  const queuePosition = lobby.queue.indexOf(username) + 1;
+  const isGameActive = lobby.gameStatus === 'playing' || lobby.gameStatus === 'countdown';
+  const canJoinQueue = !isInQueue && !(isPlayer && isGameActive);
 
-  const handleRestart = () => {
-    socket.emit('pong:restart', { room });
-  };
-
-  const isPlayer = gameState?.player1 === username || gameState?.player2 === username;
-  const isSpectator = gameState && gameState.player1 && gameState.player2 && !isPlayer;
+  const handleJoinQueue = () => socket.emit('pong:queue', { room });
+  const handleLeaveQueue = () => socket.emit('pong:dequeue', { room });
 
   // Continuous key tracking via keydown/keyup on the container
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (!isPlayer || gameState?.status !== 'playing') return;
+    if (!isPlayer || lobby.gameStatus !== 'playing') return;
     const dir = e.key === 'ArrowUp' ? 'up' : e.key === 'ArrowDown' ? 'down' : null;
     if (!dir) return;
     e.preventDefault();
-    if (heldKeysRef.current.has(dir)) return; // already held
+    if (heldKeysRef.current.has(dir)) return;
     heldKeysRef.current.add(dir);
     socket.emit('pong:startMove', { room, direction: dir });
   };
@@ -115,13 +134,13 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
     >
       <div className="pong-header">
         <h3>Pong</h3>
-        {gameState && (
+        {lobby.player1 && lobby.player2 && gameState && (
           <div className="pong-scores">
-            <span className="pong-player">{gameState.player1 ?? '?'}</span>
+            <span className="pong-player">{lobby.player1}</span>
             <span data-testid="score1" className="pong-score">{gameState.score1}</span>
             <span className="pong-vs">-</span>
             <span data-testid="score2" className="pong-score">{gameState.score2}</span>
-            <span className="pong-player">{gameState.player2 ?? '?'}</span>
+            <span className="pong-player">{lobby.player2}</span>
           </div>
         )}
       </div>
@@ -134,34 +153,46 @@ const PongGame: React.FC<PongGameProps> = ({ socket, username, room }) => {
         className="pong-canvas"
       />
 
-      {!joined && !gameState && (
-        <button className="pong-start-btn" onClick={handleJoin}>
-          Start Pong
-        </button>
-      )}
-
-      {gameState?.status === 'waiting' && (
-        <p className="pong-status">Waiting for opponent...</p>
-      )}
-
-      {gameState?.status === 'countdown' && (
+      {/* Status messages */}
+      {lobby.gameStatus === 'countdown' && (
         <p className="pong-status">Get ready!</p>
       )}
 
-      {isSpectator && gameState?.status === 'playing' && (
-        <p className="pong-status">Spectating</p>
+      {lobby.gameStatus === 'playing' && !isPlayer && (
+        <p className="pong-status">
+          Spectating{isInQueue ? ` · You're #${queuePosition} in queue` : ''}
+        </p>
       )}
 
-      {gameState?.status === 'finished' && gameState.winner && (
-        <div className="pong-finished">
-          <p className="pong-status">{gameState.winner} wins!</p>
-          {isPlayer && (
-            <button className="pong-start-btn" onClick={handleRestart}>
-              Restart
-            </button>
-          )}
-        </div>
+      {lobby.gameStatus === 'finished' && lobby.winner && (
+        <p className="pong-status">{lobby.winner} wins!</p>
       )}
+
+      {/* Lobby panel */}
+      <div data-testid="pong-lobby" className="pong-lobby">
+        {canJoinQueue && (
+          <button className="pong-start-btn" onClick={handleJoinQueue}>
+            Join Queue
+          </button>
+        )}
+        {isInQueue && (
+          <button className="pong-start-btn pong-leave-btn" onClick={handleLeaveQueue}>
+            Leave Queue (#{queuePosition})
+          </button>
+        )}
+        {lobby.queue.length > 0 && (
+          <div data-testid="pong-queue" className="pong-queue">
+            <h4>Queue</h4>
+            <ol>
+              {lobby.queue.map((user) => (
+                <li key={user} className={user === username ? 'pong-queue-you' : ''}>
+                  {user}{user === username ? ' (You)' : ''}
+                </li>
+              ))}
+            </ol>
+          </div>
+        )}
+      </div>
     </div>
   );
 };

@@ -6,38 +6,58 @@ const {
   resetBall,
   WIN_SCORE,
   CANVAS_WIDTH,
+  CANVAS_HEIGHT,
+  PADDLE_HEIGHT,
 } = require('./pongEngine.js');
 
 class PongGameManager {
   constructor() {
     this.games = {};
+    this.queues = {};
     this.countdownTimers = {};
     this.playerDirections = {};
   }
 
-  joinGame(room, username) {
-    if (!this.games[room]) {
-      const state = createGameState();
-      state.player1 = username;
-      this.games[room] = state;
-      return state;
-    }
+  joinQueue(room, username) {
+    if (!this.queues[room]) this.queues[room] = [];
+    if (this.queues[room].includes(username)) return;
+    const game = this.games[room];
+    if (game && game.status !== 'finished' && (game.player1 === username || game.player2 === username)) return;
+    this.queues[room].push(username);
+  }
 
-    const state = this.games[room];
+  leaveQueue(room, username) {
+    if (!this.queues[room]) return;
+    this.queues[room] = this.queues[room].filter(u => u !== username);
+  }
 
-    // Already a player
-    if (state.player1 === username || state.player2 === username) {
-      return state;
-    }
+  getLobby(room) {
+    const game = this.games[room];
+    return {
+      queue: this.queues[room] || [],
+      player1: game?.player1 || null,
+      player2: game?.player2 || null,
+      gameStatus: game ? game.status : 'idle',
+      winner: game?.winner || null,
+    };
+  }
 
-    // Second player joins — start countdown
-    if (!state.player2) {
-      state.player2 = username;
-      state.status = 'countdown';
-      state.countdown = 3;
-    }
+  tryStartMatch(room) {
+    const game = this.games[room];
+    if (game && game.status !== 'finished') return false;
+    const queue = this.queues[room];
+    if (!queue || queue.length < 2) return false;
 
-    return state;
+    const p1 = queue.shift();
+    const p2 = queue.shift();
+
+    const state = createGameState();
+    state.player1 = p1;
+    state.player2 = p2;
+    state.status = 'countdown';
+    state.countdown = 3;
+    this.games[room] = state;
+    return true;
   }
 
   startCountdown(room, onTick, onStart) {
@@ -48,8 +68,6 @@ class PongGameManager {
     state.countdown = 3;
     resetBall(state);
 
-    // Reset paddles
-    const { CANVAS_HEIGHT, PADDLE_HEIGHT } = require('./pongEngine.js');
     state.paddle1.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
     state.paddle2.y = CANVAS_HEIGHT / 2 - PADDLE_HEIGHT / 2;
 
@@ -79,17 +97,6 @@ class PongGameManager {
     }, 1000);
   }
 
-  restartGame(room, onTick, onStart) {
-    const state = this.games[room];
-    if (!state || state.status !== 'finished') return null;
-
-    state.score1 = 0;
-    state.score2 = 0;
-    state.winner = null;
-    this.startCountdown(room, onTick, onStart);
-    return state;
-  }
-
   getGame(room) {
     return this.games[room];
   }
@@ -114,7 +121,6 @@ class PongGameManager {
 
   clearPlayerDirection(room, username, direction) {
     if (!this.playerDirections[room]) return;
-    // Only clear if it matches the current direction (avoid clearing 'up' when 'down' stop comes)
     if (this.playerDirections[room][username] === direction) {
       this.playerDirections[room][username] = null;
     }
