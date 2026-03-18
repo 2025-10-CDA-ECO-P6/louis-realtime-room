@@ -16,6 +16,11 @@
   width: 100%;
   max-width: 400px;
   flex-shrink: 0;
+  transition: max-width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.landing-header.wide {
+  max-width: 840px;
 }
 
 .landing-header h1 {
@@ -32,18 +37,69 @@
   margin: 0;
 }
 
+/* --- Two-box layout --- */
+
+.landing-boxes {
+  display: flex;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 840px;
+  justify-content: center;
+  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.landing-boxes:not(.has-rooms) {
+  max-width: 400px;
+}
+
+.landing-box {
+  background: #fff;
+  border-radius: 1.5rem 0.5rem 1rem 0.5rem;
+  box-shadow: 0 2px 16px rgba(0, 0, 0, 0.07);
+  padding: 1.5rem 1rem;
+  flex: 1;
+  min-width: 0;
+  animation: slideIn 0.5s cubic-bezier(0.4, 0, 0.2, 1) both;
+}
+
+.landing-box h2 {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #22223b;
+  margin: 0 0 1rem;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.create-box {
+  animation-name: slideFromLeft;
+}
+
+@keyframes slideFromLeft {
+  from {
+    opacity: 0;
+    transform: translateX(-40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
 .landing-form {
   display: flex;
   flex-direction: column;
   gap: 1rem;
   width: 100%;
-  max-width: 400px;
-  background: #fff;
-  border-radius: 1.5rem 0.5rem 1rem 0.5rem;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.07);
-  padding: 1.5rem 1rem;
-  margin-bottom: 2rem;
-  flex-shrink: 0;
 }
 
 .landing-form input {
@@ -72,10 +128,90 @@
   background: #4a4e69;
 }
 
+/* --- Join existing room box --- */
+
+.join-name-input {
+  margin-bottom: 1rem;
+
+  input {
+    padding: 0.75rem 1rem;
+    border: 1px solid #ddd;
+    border-radius: 0.5rem;
+    font-size: 1rem;
+    width: 100%;
+    font-family: inherit;
+  }
+}
+
+.room-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  max-height: 260px;
+  overflow-y: auto;
+}
+
+.room-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid #eee;
+  border-radius: 0.5rem;
+  transition: background 0.15s;
+
+  &:hover {
+    background: #f7f7fa;
+  }
+}
+
+.room-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.room-name {
+  font-weight: 600;
+  color: #22223b;
+  font-size: 0.95rem;
+}
+
+.room-users {
+  font-size: 0.8rem;
+  color: #9a8c98;
+}
+
+.join-btn {
+  padding: 0.4rem 1rem;
+  background: #22223b;
+  color: #fff;
+  border: none;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.2s, opacity 0.2s;
+
+  &:hover:not(:disabled) {
+    background: #4a4e69;
+  }
+
+  &:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+}
+
+/* --- Footer --- */
+
 .landing-footer {
   text-align: right;
   width: 100%;
-  max-width: 400px;
+  max-width: 840px;
   flex-shrink: 0;
 }
 
@@ -83,6 +219,14 @@
   color: #9a8c98;
   text-decoration: underline;
   font-size: 0.95rem;
+}
+
+/* --- Responsive --- */
+
+@media (max-width: 640px) {
+  .landing-boxes {
+    flex-direction: column;
+  }
 }
 
 @media (min-width: 768px) {
@@ -98,7 +242,7 @@
     font-size: 1.1rem;
   }
 
-  .landing-form {
+  .landing-box {
     padding: 2rem 1.5rem;
   }
 }

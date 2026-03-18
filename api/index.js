@@ -20,6 +20,19 @@ const pongManager = new PongGameManager();
 const pongIntervals = {};
 const nextMatchTimers = {};
 
+function getActiveRooms() {
+  const roomMap = {};
+  for (const u of Object.values(users)) {
+    if (!roomMap[u.room]) roomMap[u.room] = 0;
+    roomMap[u.room]++;
+  }
+  return Object.entries(roomMap).map(([name, count]) => ({ name, users: count }));
+}
+
+function broadcastRoomList() {
+  io.emit('rooms:list', getActiveRooms());
+}
+
 app.get('/health', (_, res) => {
   res.status(200).json({ status: 'ok' });
 });
@@ -63,6 +76,7 @@ function startGameForRoom(room) {
 
 io.on('connection', (socket) => {
   console.log('New client connected:', socket.id);
+  socket.emit('rooms:list', getActiveRooms());
 
   socket.on('join', ({ username, room }) => {
     socket.join(room);
@@ -84,6 +98,7 @@ io.on('connection', (socket) => {
       .map(u => u.username);
     
     io.to(room).emit('roomUsers', roomUsers);
+    broadcastRoomList();
     
     // Send current pong lobby/game state to new joiner
     socket.emit('pong:lobby', pongManager.getLobby(room));
@@ -153,6 +168,7 @@ io.on('connection', (socket) => {
         .map(u => u.username);
       
       io.to(user.room).emit('roomUsers', roomUsers);
+      broadcastRoomList();
       
       // Clean up pong game if a player disconnects
       pongManager.leaveQueue(user.room, user.username);

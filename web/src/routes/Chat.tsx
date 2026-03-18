@@ -80,6 +80,7 @@ const Chat: React.FC = () => {
             </span>
           ))}
         </div>
+        <button className="sidebar-back" onClick={() => navigate('/')}>← Back to Lobby</button>
       </aside>
       <main className="chat-main">
         <div className="chat-header">
